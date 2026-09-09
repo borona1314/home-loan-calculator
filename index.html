@@ -135,6 +135,7 @@
   .rc-empty{padding:20px 18px;text-align:center;color:var(--ink-soft);font-size:.9rem;}
 
   .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;}
+  @media (max-width:420px){ .field-grid{grid-template-columns:1fr;} }
   .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
   .field:last-child{margin-bottom:0;}
   .field label{font-size:.78rem;color:var(--ink-soft);}
@@ -204,6 +205,7 @@
 
   /* responsive card table: real table on wide screens, stacked cards on narrow */
   table.sched{width:100%;border-collapse:collapse;font-size:.82rem;}
+  @media (min-width:641px){ table.sched{min-width:600px;} }
   table.sched th{text-align:right;font-weight:600;color:var(--ink-soft);border-bottom:1px solid var(--line);padding:8px;white-space:nowrap;}
   table.sched th:first-child, table.sched td:first-child{text-align:left;}
   table.sched td{padding:7px 8px;border-bottom:1px solid var(--line-soft);text-align:right;}
@@ -1281,7 +1283,11 @@
           '<td data-label="คงเหลือ" class="num">'+baht(r.balance)+'</td>';
         tbody.appendChild(tr);
       });
-      det.appendChild(tbl);
+      const scrollWrap = document.createElement('div');
+      scrollWrap.className = 'table-scroll';
+      scrollWrap.style.maxHeight = 'none';
+      scrollWrap.appendChild(tbl);
+      det.appendChild(scrollWrap);
       container.appendChild(det);
     });
   }
