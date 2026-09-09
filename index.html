@@ -446,13 +446,10 @@
     <details class="acc">
       <summary>วันหยุดเสาร์-อาทิตย์ และวันหยุดธนาคาร</summary>
       <div class="acc-body">
-        <div class="hint" style="margin-top:0;">วันครบกำหนดที่ตรงเสาร์-อาทิตย์ จะถูกเลื่อนเป็นวันทำการก่อนหน้าให้อัตโนมัติเสมอ (เช่น ครบกำหนดวันที่ 10 ตรงอาทิตย์ ต้องจ่ายก่อนวันศุกร์ที่ 8) ส่วนวันหยุดนักขัตฤกษ์ ดึงข้อมูลหรือเพิ่มเองด้านล่าง</div>
-        <div class="field-grid">
-          <div class="field"><label for="holidayFetchYear">ปี (ค.ศ.)</label><input type="number" id="holidayFetchYear" min="2020" max="2100" step="1"></div>
-          <div class="field"><label for="holidayFetchSpan">จำนวนปี</label><input type="number" id="holidayFetchSpan" min="1" max="15" value="5" step="1"></div>
-        </div>
-        <button class="btn secondary block" id="fetchHolidaysBtn">ดึงวันหยุดธนาคารไทยจากอินเทอร์เน็ต</button>
+        <div class="hint" style="margin-top:0;">วันครบกำหนดที่ตรงเสาร์-อาทิตย์ จะถูกเลื่อนเป็นวันทำการก่อนหน้าให้อัตโนมัติเสมอ (เช่น ครบกำหนดวันที่ 10 ตรงอาทิตย์ ต้องจ่ายก่อนวันศุกร์ที่ 8)</div>
+        <button class="btn secondary block" id="fetchHolidaysBtn">โหลดวันหยุดธนาคารไทย ปี 2569-2570</button>
         <div class="hint" id="holidayFetchStatus"></div>
+        <div class="hint">ข้อมูลตามประกาศธนาคารแห่งประเทศไทย (ไม่ได้ดึงสดจากอินเทอร์เน็ต เพราะยังไม่มีบริการ API สาธารณะที่รองรับวันหยุดไทยที่เชื่อถือได้) ปีถัดจาก 2570 รอประกาศแล้วพิมพ์เพิ่มเองด้านล่างได้เลย</div>
         <div class="field full" style="margin-top:10px;">
           <label for="holidayListArea">รายการวันหยุด (หนึ่งวันที่ต่อบรรทัด YYYY-MM-DD) แก้ไข/เพิ่มเองได้</label>
           <textarea id="holidayListArea" rows="5"></textarea>
@@ -913,6 +910,19 @@
       }
     });
 
+    // holiday-list staleness reminder (Oct onward, if next year has no holiday entries yet)
+    if(today.getMonth() >= 9){ // October (0-indexed) or later
+      const nextYear = today.getFullYear() + 1;
+      const hasNextYear = (state.customHolidays||[]).some(function(d){ return d.startsWith(String(nextYear)); });
+      if(!hasNextYear){
+        items.push({
+          key:'holiday-stale-'+nextYear,
+          cls:'',
+          text: 'ยังไม่มีรายชื่อวันหยุดธนาคารปี ' + nextYear + ' ในระบบ — ลองขอ Claude ช่วยหารายชื่อล่าสุดจากธนาคารแห่งประเทศไทยมาเพิ่มในหน้าตั้งค่า'
+        });
+      }
+    }
+
     // negative amortization warning
     if(result.negAmort){
       items.push({ key:'negamort', cls:'urgent', text:'คำเตือน: ค่างวดที่ตั้งไว้ต่ำกว่าดอกเบี้ยในบางงวด ทำให้ยอดหนี้เพิ่มขึ้นแทนที่จะลด ลองปรับค่างวดหรือเปลี่ยนเป็นคำนวณอัตโนมัติ' });
@@ -1372,6 +1382,19 @@
   }
 
   /* ================= HOLIDAY LIST ================= */
+  // Verified Thai bank-holiday dates for 2569 (2026) and 2570 (2027), per Bank of Thailand
+  // announcement (source: Bualuang Securities, data as of 29 Jun 2026).
+  // Nager.Date (the public holiday API used elsewhere) does not yet support Thailand
+  // (add-country pull request still open as of 2026), so this seed list is embedded
+  // directly instead of fetched over the network.
+  const THAI_HOLIDAYS_SEED = [
+    '2026-01-01','2026-01-02','2026-03-03','2026-04-06','2026-04-13','2026-04-14','2026-04-15',
+    '2026-05-01','2026-05-04','2026-06-01','2026-06-03','2026-07-28','2026-07-29','2026-08-12',
+    '2026-10-13','2026-10-16','2026-10-23','2026-12-07','2026-12-10','2026-12-31',
+    '2027-01-01','2027-02-22','2027-04-06','2027-04-13','2027-04-14','2027-04-15',
+    '2027-05-03','2027-05-04','2027-05-20','2027-06-03','2027-07-19','2027-07-28','2027-08-12',
+    '2027-10-13','2027-10-25','2027-12-06','2027-12-10','2027-12-31'
+  ];
   function renderHolidayList(){
     const area = document.getElementById('holidayListArea');
     const sorted = (state.customHolidays||[]).slice().sort();
@@ -1385,30 +1408,17 @@
       state.customHolidays = Array.from(new Set(validDates)).sort();
       saveState(); renderHolidayList(); recalcAll();
     });
-    document.getElementById('holidayFetchYear').value = new Date().getFullYear();
-    document.getElementById('fetchHolidaysBtn').addEventListener('click', fetchThaiHolidays);
+    document.getElementById('fetchHolidaysBtn').addEventListener('click', loadThaiHolidaySeed);
   }
-  async function fetchThaiHolidays(){
+  function loadThaiHolidaySeed(){
     const status = document.getElementById('holidayFetchStatus');
-    const startYear = Number(document.getElementById('holidayFetchYear').value) || new Date().getFullYear();
-    const span = Math.min(15, Math.max(1, Number(document.getElementById('holidayFetchSpan').value) || 5));
-    status.textContent = 'กำลังดึงข้อมูล...';
-    let collected = [];
-    let failedYears = [];
-    for(let y = startYear; y < startYear + span; y++){
-      try{
-        const res = await fetch('https://date.nager.at/api/v3/PublicHolidays/' + y + '/TH');
-        if(!res.ok) throw new Error('bad status');
-        const data = await res.json();
-        data.forEach(function(h){ if(h.date) collected.push(h.date); });
-      }catch(e){
-        failedYears.push(y);
-      }
-    }
-    state.customHolidays = Array.from(new Set((state.customHolidays||[]).concat(collected))).sort();
+    const before = new Set(state.customHolidays||[]);
+    state.customHolidays = Array.from(new Set((state.customHolidays||[]).concat(THAI_HOLIDAYS_SEED))).sort();
+    const added = state.customHolidays.filter(function(d){ return !before.has(d); }).length;
     saveState(); renderHolidayList(); recalcAll();
-    status.textContent = 'ดึงข้อมูลสำเร็จ ' + collected.length + ' วันหยุด (ปี ' + startYear + '-' + (startYear+span-1) + ')' +
-      (failedYears.length ? ' · ดึงไม่สำเร็จปี: ' + failedYears.join(', ') : '');
+    status.textContent = added > 0
+      ? 'เพิ่มวันหยุดแล้ว ' + added + ' วัน (ปี 2569-2570 ตามประกาศธนาคารแห่งประเทศไทย)'
+      : 'มีข้อมูลปี 2569-2570 ครบอยู่แล้ว';
   }
 
   /* ================= MULTI-DEVICE SYNC (Firebase Realtime DB) ================= */
