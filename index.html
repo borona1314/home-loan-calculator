@@ -916,6 +916,19 @@
     saveState(); renderLumpList(); recalcAll();
   });
 
+  function currentExtraPeriodKey(today){
+    const freq = state.extraReminderFrequency || 'monthly';
+    if(freq === 'yearly') return 'Y' + today.getFullYear();
+    if(freq === 'quarterly') return 'Q' + today.getFullYear() + '-' + Math.ceil((today.getMonth()+1)/3);
+    return 'M' + today.getFullYear() + '-' + (today.getMonth()+1);
+  }
+  function extraFrequencyLabel(){
+    const freq = state.extraReminderFrequency || 'monthly';
+    if(freq === 'yearly') return 'ประจำปีนี้';
+    if(freq === 'quarterly') return 'ประจำไตรมาสนี้';
+    return 'ประจำเดือนนี้';
+  }
+
   /* ================= BANNERS ================= */
   let dismissedBanners = {};
   function renderBanners(result){
